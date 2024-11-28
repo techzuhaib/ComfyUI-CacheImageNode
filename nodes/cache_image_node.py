@@ -54,63 +54,63 @@ class CacheImageNode:
         if not image_url:
             raise ValueError("No image URL provided")
 
-    # Generate a unique filename using a hash of the URL
-    image_hash = hashlib.md5(image_url.encode('utf-8')).hexdigest()
+        # Generate a unique filename using a hash of the URL
+        image_hash = hashlib.md5(image_url.encode('utf-8')).hexdigest()
 
-    # Determine the file extension from the URL or response headers
-    extension = self.get_file_extension(image_url)
+        # Determine the file extension from the URL or response headers
+        extension = self.get_file_extension(image_url)
 
-    cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
+        cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
 
-    # Check if the image is already cached
-    if os.path.exists(cached_image_path):
+        # Check if the image is already cached
+        if os.path.exists(cached_image_path):
+            # Load the image and convert to tensor
+            img = Image.open(cached_image_path)
+            img_out, mask_out = self.pil2tensor(img)
+            return (img_out, mask_out)
+
+        # Download the image
+        try:
+            response = requests.get(image_url, timeout=10)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Failed to download image from URL: {image_url}. Error: {str(e)}")
+
+        # Update extension based on Content-Type if necessary
+        content_type = response.headers.get('Content-Type', '')
+        if not extension or extension == '.unknown':
+            extension = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
+            # Update cached image path with new extension
+            cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
+
+        # Save the image to the cache directory
+        if 'image' in content_type:
+            try:
+                image = Image.open(BytesIO(response.content))
+                image.save(cached_image_path)
+            except Exception as e:
+                # If PIL cannot open the image, save it as binary
+                with open(cached_image_path, "wb") as f:
+                    f.write(response.content)
+        else:
+            # Save non-image files as they are
+            with open(cached_image_path, "wb") as f:
+                f.write(response.content)
+
+        # Occasionally check used space and purge if necessary (0.1% of the requests)
+        if random.random() < 0.001:
+            self.update_access_counts()
+            self.purge_cache()
+
+        # Occasionally update the access count file (5% of the requests)
+        if random.random() < 0.05:
+            self.update_access_counts()
+
         # Load the image and convert to tensor
         img = Image.open(cached_image_path)
         img_out, mask_out = self.pil2tensor(img)
+        
         return (img_out, mask_out)
-
-    # Download the image
-    try:
-        response = requests.get(image_url, timeout=10)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Failed to download image from URL: {image_url}. Error: {str(e)}")
-
-    # Update extension based on Content-Type if necessary
-    content_type = response.headers.get('Content-Type', '')
-    if not extension or extension == '.unknown':
-        extension = mimetypes.guess_extension(content_type.split(';')[0]) or '.png'
-        # Update cached image path with new extension
-        cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
-
-    # Save the image to the cache directory
-    if 'image' in content_type:
-        try:
-            image = Image.open(BytesIO(response.content))
-            image.save(cached_image_path)
-        except Exception as e:
-            # If PIL cannot open the image, save it as binary
-            with open(cached_image_path, "wb") as f:
-                f.write(response.content)
-    else:
-        # Save non-image files as they are
-        with open(cached_image_path, "wb") as f:
-            f.write(response.content)
-
-    # Occasionally check used space and purge if necessary (0.1% of the requests)
-    if random.random() < 0.001:
-        self.update_access_counts()
-        self.purge_cache()
-
-    # Occasionally update the access count file (5% of the requests)
-    if random.random() < 0.05:
-        self.update_access_counts()
-
-    # Load the image and convert to tensor
-    img = Image.open(cached_image_path)
-    img_out, mask_out = self.pil2tensor(img)
-    
-    return (img_out, mask_out)
 
     def get_file_extension(self, image_url):
         # Try to get the file extension from the URL
