@@ -57,17 +57,26 @@ class CacheImageNode:
         # Generate a unique filename using a hash of the URL
         image_hash = hashlib.md5(image_url.encode('utf-8')).hexdigest()
 
-        # Determine the file extension from the URL or response headers
-        extension = self.get_file_extension(image_url)
-
-        cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
-
-        # Check if the image is already cached
-        if os.path.exists(cached_image_path):
+        # First, try to find an existing cached file with any extension
+        cached_files = glob.glob(os.path.join(CACHE_DIR, f"{image_hash}.*"))
+        
+        if cached_files:
+            # Use the first matching cached file
+            cached_image_path = cached_files[0]
+            
             # Load the image and convert to tensor
             img = Image.open(cached_image_path)
             img_out, mask_out = self.pil2tensor(img)
+            
+            # Increment access count for this image
+            with self._access_counts_lock:
+                self.internal_access_counts[image_hash] = self.internal_access_counts.get(image_hash, 0) + 1
+            
             return (img_out, mask_out)
+
+        # Determine the file extension from the URL or response headers
+        extension = self.get_file_extension(image_url)
+        cached_image_path = os.path.join(CACHE_DIR, f"{image_hash}{extension}")
 
         # Download the image
         try:
@@ -109,6 +118,10 @@ class CacheImageNode:
         # Load the image and convert to tensor
         img = Image.open(cached_image_path)
         img_out, mask_out = self.pil2tensor(img)
+        
+        # Increment access count for this newly cached image
+        with self._access_counts_lock:
+            self.internal_access_counts[image_hash] = self.internal_access_counts.get(image_hash, 0) + 1
         
         return (img_out, mask_out)
 
