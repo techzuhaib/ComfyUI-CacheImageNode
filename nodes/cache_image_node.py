@@ -67,7 +67,7 @@ class CacheImageNode:
         # Load the image and convert to tensor
         img = Image.open(cached_image_path)
         img_out, mask_out = self.pil2tensor(img)
-        return (img_out, mask_out)
+            return (img_out, mask_out)
 
     # Download the image
     try:
