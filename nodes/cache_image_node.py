@@ -51,8 +51,8 @@ class CacheImageNode:
         return access_counts
 
     def load_and_cache_image(self, image_url):
-    if not image_url:
-        raise ValueError("No image URL provided")
+        if not image_url:
+            raise ValueError("No image URL provided")
 
     # Generate a unique filename using a hash of the URL
     image_hash = hashlib.md5(image_url.encode('utf-8')).hexdigest()
