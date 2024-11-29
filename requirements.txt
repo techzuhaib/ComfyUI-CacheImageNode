@@ -1,2 +1,2 @@
-portalocker==2.7.0  # Cross-platform file locking
+fcntl-linux>=0.1.0  # Cross-platform file locking
 requests==2.31.0    # HTTP requests
