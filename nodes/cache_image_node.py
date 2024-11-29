@@ -15,7 +15,7 @@ import contextlib
 from threading import Lock
 
 # Use RunPod's shared storage path
-CACHE_DIR = "/runpod-volume/cached_images"  # Adjust this path as needed
+CACHE_DIR = "/workspace/ComfyUI/cached_images"  # Adjust this path as needed
 ACCESS_COUNT_FILE = os.path.join(CACHE_DIR, "access_counts.txt")
 
 @contextlib.contextmanager
